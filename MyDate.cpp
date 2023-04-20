@@ -11,6 +11,7 @@
 
 #include <utility>
 #include <sstream>
+#include <iomanip>
 #include <string>
 #include <ctime>
 
@@ -36,6 +37,7 @@ namespace cpt_project_2 {
         MyDate &operator=(const MyDate &from);
 
         const MyDate operator++(int);
+
         MyDate &operator++();
 
         static void update_from_time_zone(MyDate *self, std::time_t time_zone);
@@ -59,8 +61,7 @@ namespace cpt_project_2 {
         std::stringstream ss;
 
         ss << year << "-" << month << "-" << day;
-
-        strptime(ss.str().c_str(), "%Y-%b-%d", &(this->time_struct));
+        ss >> std::get_time(&(this->time_struct), "%Y-%b-%d");
 
         this->year = year;
         this->month = std::move(month);
@@ -104,28 +105,9 @@ namespace cpt_project_2 {
     /**
      * 通过时间戳生成 MyDate 对象
      * @param time_zone: 时间戳, 不考虑闰秒
-     * @note 特别处理了 二月 的情况(题目要求 2 月为 28 天)
      */
     MyDate::MyDate(std::time_t time_zone) {
         MyDate::update_from_time_zone(this, time_zone);
-
-        if (this->february_has_28_days()) {
-            // 输入了一个平年
-            return;
-        }
-        // 闰年
-        if (this->time_struct.tm_mon == 0) {
-            // 一月份
-            return;
-        } else if (this->time_struct.tm_mon == 1) {
-            // 二月份
-            if (this->day <= 28) {
-                return;
-            }
-        } else {
-            // 三到十二月
-        }
-
         time_zone += 24 * 60 * 60;  // time_zone 增加一天时间
         MyDate::update_from_time_zone(this, time_zone);
     }
@@ -148,15 +130,21 @@ namespace cpt_project_2 {
     const MyDate MyDate::operator++(int) {
         auto self_zone = std::mktime(&this->time_struct);
         const auto ret = MyDate(self_zone);
+        auto may_add = true;
+
+        if ((this->time_struct.tm_mon >= 2) or  // 三至十二月份
+            (this->time_struct.tm_mon == 1 and this->day > 28)
+                ) {
+            may_add = false;
+        }
 
         self_zone += 24 * 60 * 60;  // time_zone 增加一天时间
         MyDate::update_from_time_zone(this, self_zone);
-        if (not(this->february_has_28_days())) {
+        if (may_add and not(this->february_has_28_days())) {
             // 输入了一个润年
-            if (
-                    (this->time_struct.tm_mon >= 2) or  // 三至十二月份
-                    (this->time_struct.tm_mon == 1 and this->day > 28)
-            ) {
+            if ((this->time_struct.tm_mon >= 2) or  // 三至十二月份
+                (this->time_struct.tm_mon == 1 and this->day > 28)
+                    ) {
                 self_zone += 24 * 60 * 60;  // time_zone 增加一天时间
                 MyDate::update_from_time_zone(this, self_zone);
             }
@@ -165,14 +153,21 @@ namespace cpt_project_2 {
     }
 
     MyDate &MyDate::operator++() {
+        auto may_add = true;
+
+        if ((this->time_struct.tm_mon >= 2) or  // 三至十二月份
+            (this->time_struct.tm_mon == 1 and this->day > 28)
+                ) {
+            may_add = false;
+        }
+
         auto self_zone = std::mktime(&this->time_struct);
         self_zone += 24 * 60 * 60;  // time_zone 增加一天时间
         MyDate::update_from_time_zone(this, self_zone);
-        if (not(this->february_has_28_days())) {
+        if (may_add and not(this->february_has_28_days())) {
             // 输入了一个润年
-            if (
-                    (this->time_struct.tm_mon >= 2) or  // 三至十二月份
-                    (this->time_struct.tm_mon == 1 and this->day > 28)
+            if ((this->time_struct.tm_mon >= 2) or  // 三至十二月份
+                (this->time_struct.tm_mon == 1 and this->day > 28)
                     ) {
                 self_zone += 24 * 60 * 60;  // time_zone 增加一天时间
                 MyDate::update_from_time_zone(this, self_zone);
@@ -180,5 +175,4 @@ namespace cpt_project_2 {
         }
         return *this;
     }
-
 }

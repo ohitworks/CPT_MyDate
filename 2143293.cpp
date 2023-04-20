@@ -18,7 +18,7 @@ int main() {
     auto day = cpt_project_2::MyDate(2020, "Feb", 27);
     std::cout << asctime(&day.time_struct) << std::endl;
     auto day2 = day + 2;
-    day2 ++;
+    day2++;
     std::cout << asctime(&day2.time_struct) << std::endl;
 
     return 0;
