@@ -1,8 +1,8 @@
 /**
   **************************** Project: MyDate.cpp ****************************
-  * Created by TODO:AuthorHere on 2023/4/14.
+  * Created by oh-it-works on 2023/4/14.
   * @file
-  * @author     TODO:AuthorHere
+  * @author     oh-it-works
   * @date       2023-04-14
   * @brief      TODO:BriefHere
   **************************** Project: MyDate.cpp ****************************
@@ -17,9 +17,15 @@
 
 
 namespace cpt_project_2 {
+#ifdef FEBRUARY_NOT_ALWAYS_28_DAYS
+    bool USE_FEBRUARY_ALWAYS_28_DAYS = false;
+#else
+    bool USE_FEBRUARY_ALWAYS_28_DAYS = true;
+#endif
 
     class MyDate {
     public:
+        std::string date;
         std::string month;
         int day{};
         int year{};
@@ -43,9 +49,10 @@ namespace cpt_project_2 {
         static void update_from_time_zone(MyDate *self, std::time_t time_zone);
 
         std::tm time_struct{};
-    private:
 
         [[nodiscard]] bool february_has_28_days() const;
+
+        [[nodiscard]] bool february_29_passed_this_year() const;
     };
 
     // --- start Definite ---
@@ -59,21 +66,39 @@ namespace cpt_project_2 {
     MyDate::MyDate(int year, std::string month, int day) {
 
         std::stringstream ss;
+        std::stringstream ss_date;
 
         ss << year << "-" << month << "-" << day;
-        ss >> std::get_time(&(this->time_struct), "%Y-%b-%d");
+        ss.imbue(std::locale("en_US.utf-8"));
+        ss >> std::get_time(&(this->time_struct), "%Y-%b-%d");  // Note: Clion on Linux 说这里有个 Error (下一行)
+        // In template: reference to non-static member function must be called
+
+        ss_date << std::put_time(&(this->time_struct), "%Y-%b-%d");
 
         this->year = year;
         this->month = std::move(month);
         this->day = day;
+        this->date = ss_date.str();
     }
 
+    /**
+     * 将析构函数定义为 default
+     */
     MyDate::~MyDate() = default;
 
+    /**
+     * 返回 this->year 是否是平年
+     * @return
+     */
     bool MyDate::february_has_28_days() const {
         return not((this->year % 4 == 0) and (this->year % 100 != 0));
     }
 
+    /**
+     * 赋值操作, 实话说没搞明白, 反正做了一个复制值
+     * @param from
+     * @return
+     */
     MyDate &MyDate::operator=(const MyDate &from) {
         if (this == &from) {
             // 给自己赋值
@@ -87,17 +112,46 @@ namespace cpt_project_2 {
     }
 
     /**
-     * 增加指定天数, 注意二月始终按照 28 天算
-     * @param days
+     * 增加指定天数
+     * @param days: 变化的天数
      * @return
      */
     MyDate MyDate::operator+(int days) {
         auto self_zone = std::mktime(&this->time_struct);
         auto new_zone = self_zone + days * 24 * 60 * 60;
+        auto result = MyDate(new_zone);
 
-        return MyDate(new_zone);
+        if (not USE_FEBRUARY_ALWAYS_28_DAYS) {
+            // 关闭了强制 2月为 28天的选项
+            return result;
+        }
+
+        // 考虑 2月问题
+        if (this->year == result.year) {  // 未跨年
+            if ((not this->february_29_passed_this_year()) and result.february_29_passed_this_year()) {
+                // 二月始终按照 28 天算
+                MyDate::update_from_time_zone(&result, new_zone + 24 * 60 * 60);
+            }
+        } else {  // 跨年了
+            auto days_to_add = 0;
+            days_to_add += not this->february_29_passed_this_year();
+            for (int i = this->year + 1; i < result.year; i++) {
+                days_to_add += (this->year % 4 == 0) and (this->year % 100 != 0);
+            }
+            MyDate::update_from_time_zone(&result, new_zone + 24 * 60 * 60 * days_to_add);
+            if (result.february_29_passed_this_year()) {
+                MyDate::update_from_time_zone(&result, new_zone + 24 * 60 * 60);
+            }
+        }
+
+        return result;
     }
 
+    /**
+     * 减去指定天数, 其实就是 *this + (-days)
+     * @param days: 变化的天数
+     * @return
+     */
     MyDate MyDate::operator-(int days) {
         return *this + (-days);
     }
@@ -108,8 +162,6 @@ namespace cpt_project_2 {
      */
     MyDate::MyDate(std::time_t time_zone) {
         MyDate::update_from_time_zone(this, time_zone);
-        time_zone += 24 * 60 * 60;  // time_zone 增加一天时间
-        MyDate::update_from_time_zone(this, time_zone);
     }
 
     /**
@@ -118,61 +170,54 @@ namespace cpt_project_2 {
      * @param time_zone
      */
     void MyDate::update_from_time_zone(MyDate *self, std::time_t time_zone) {
-        char char_month[3] = {0};
+        std::stringstream ss_month, ss_date;
 
         self->time_struct = *localtime(&time_zone);
-        strftime(char_month, 3, "%y", &self->time_struct);
+        ss_month << std::put_time(&(self->time_struct), "%y");
+        ss_date << std::put_time(&(self->time_struct), "%Y-%b-%d");
+
         self->year = self->time_struct.tm_year + 1900;
-        self->month = std::string(char_month);
+        self->month = ss_month.str();
         self->day = self->time_struct.tm_mday;
+        self->date = ss_date.str();
     }
 
+    /**
+     * 后置 ++ 操作符, 调用了前置 ++. 实话说不知道这个 Warning 怎么回事.
+     * @return
+     */
     const MyDate MyDate::operator++(int) {
         auto self_zone = std::mktime(&this->time_struct);
-        const auto ret = MyDate(self_zone);
-        auto may_add = true;
+        const auto copy = MyDate(self_zone);  // Copy self.
 
-        if ((this->time_struct.tm_mon >= 2) or  // 三至十二月份
-            (this->time_struct.tm_mon == 1 and this->day > 28)
-                ) {
-            may_add = false;
-        }
+        ++(*this);
 
-        self_zone += 24 * 60 * 60;  // time_zone 增加一天时间
-        MyDate::update_from_time_zone(this, self_zone);
-        if (may_add and not(this->february_has_28_days())) {
-            // 输入了一个润年
-            if ((this->time_struct.tm_mon >= 2) or  // 三至十二月份
-                (this->time_struct.tm_mon == 1 and this->day > 28)
-                    ) {
-                self_zone += 24 * 60 * 60;  // time_zone 增加一天时间
-                MyDate::update_from_time_zone(this, self_zone);
-            }
-        }
-        return ret;
+        return copy;
     }
 
+    /**
+     * 前置 ++ 操作符
+     * @return
+     */
     MyDate &MyDate::operator++() {
-        auto may_add = true;
-
-        if ((this->time_struct.tm_mon >= 2) or  // 三至十二月份
-            (this->time_struct.tm_mon == 1 and this->day > 28)
-                ) {
-            may_add = false;
-        }
-
         auto self_zone = std::mktime(&this->time_struct);
         self_zone += 24 * 60 * 60;  // time_zone 增加一天时间
-        MyDate::update_from_time_zone(this, self_zone);
-        if (may_add and not(this->february_has_28_days())) {
-            // 输入了一个润年
-            if ((this->time_struct.tm_mon >= 2) or  // 三至十二月份
-                (this->time_struct.tm_mon == 1 and this->day > 28)
-                    ) {
-                self_zone += 24 * 60 * 60;  // time_zone 增加一天时间
-                MyDate::update_from_time_zone(this, self_zone);
-            }
+        if (USE_FEBRUARY_ALWAYS_28_DAYS and
+            (not this->february_has_28_days()) and this->time_struct.tm_mon == 1 and this->day == 28) {
+            // 闰年 2月28日 增加 1 天是 2月29日, 应当被 "修正" 为 3月1日
+            self_zone += 24 * 60 * 60;
         }
+        // 使用 MyDate::update_from_time_zone 更新自身
+        MyDate::update_from_time_zone(this, self_zone);
         return *this;
+    }
+
+    /**
+     * 返回 my_date 日期是否经过了 my_date->year 的 2月29日, 若 my_date->year 是平年, 则返回 False
+     * @return
+     */
+    bool MyDate::february_29_passed_this_year() const {
+        return this->february_has_28_days() and  // 平年一定没有 2月29日
+               this->time_struct.tm_mon > 1 or this->time_struct.tm_mon == 1 and this->day > 28;
     }
 }

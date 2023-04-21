@@ -1,25 +1,25 @@
 /**
   **************************** Project: 2143293.cpp ****************************
-  * Created by TODO:AuthorHere on 2023/4/14.
+  * Created by oh-it-works on 2023/4/14.
   * @file
-  * @author     TODO:AuthorHere
+  * @author     oh-it-works
   * @date       2023-04-14
   * @brief      TODO:BriefHere
   **************************** Project: 2143293.cpp ****************************
  */
-
 #include "MyDate.cpp"
+#include "SubDate.cpp"
 
-#include <ctime>
 #include <iostream>
 
 
 int main() {
-    auto day = cpt_project_2::MyDate(2020, "Feb", 27);
-    std::cout << asctime(&day.time_struct) << std::endl;
-    auto day2 = day + 2;
+    cpt_project_2::USE_FEBRUARY_ALWAYS_28_DAYS = true;
+    auto day = cpt_project_2::MyDate(2020, "February", 28);
+    std::cout << day.date << std::endl;
+    auto day2 = day + 1;
     day2++;
-    std::cout << asctime(&day2.time_struct) << std::endl;
+    std::cout << day2.date << std::endl;
 
     return 0;
 }
