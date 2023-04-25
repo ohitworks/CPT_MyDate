@@ -17,7 +17,7 @@
 namespace cpt_project_2 {
     class SubDate : public MyDate {
     public:
-        int hour, minute, second;
+        [[maybe_unused]] int hour{}, minute{}, second{};
 
         SubDate(int year, std::string month, int day, int hour, int minute, int second);
 
