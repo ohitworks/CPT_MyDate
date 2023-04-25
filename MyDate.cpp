@@ -40,6 +40,12 @@ namespace cpt_project_2 {
 
         MyDate operator-(int days);
 
+        bool operator>(MyDate other_date);
+
+        bool operator<(MyDate other_date);
+
+        bool operator==(const MyDate& other_date);
+
         MyDate &operator=(const MyDate &from);
 
         const MyDate operator++(int);
@@ -219,5 +225,24 @@ namespace cpt_project_2 {
     bool MyDate::february_29_passed_this_year() const {
         return this->february_has_28_days() and  // 平年一定没有 2月29日
                this->time_struct.tm_mon > 1 or this->time_struct.tm_mon == 1 and this->day > 28;
+    }
+
+    bool MyDate::operator>(MyDate other_date) {
+        auto self_zone = std::mktime(&this->time_struct);
+        auto other_zone = std::mktime(&other_date.time_struct);
+        return self_zone > other_zone;
+    }
+
+    bool MyDate::operator<(MyDate other_date) {
+        auto self_zone = std::mktime(&this->time_struct);
+        auto other_zone = std::mktime(&other_date.time_struct);
+        return self_zone < other_zone;
+    }
+
+    bool MyDate::operator==(const MyDate& other_date) {
+        std::tm time_from = other_date.time_struct;
+        auto self_zone = std::mktime(&this->time_struct);
+        auto other_zone = std::mktime(&time_struct);
+        return self_zone == other_zone;
     }
 }
