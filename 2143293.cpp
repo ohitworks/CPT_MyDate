@@ -21,5 +21,8 @@ int main() {
     day2++;
     std::cout << day2.date << std::endl;
 
+    auto day_sub = cpt_project_2::SubDate(2020, "February", 28, 1, 1, 12);
+    std::cout << day_sub.date << std::endl;
+
     return 0;
 }

@@ -40,11 +40,13 @@ namespace cpt_project_2 {
 
         MyDate operator-(int days);
 
+        int operator-(const MyDate &other_date);
+
         bool operator>(MyDate other_date);
 
         bool operator<(MyDate other_date);
 
-        bool operator==(const MyDate& other_date);
+        bool operator==(const MyDate &other_date);
 
         MyDate &operator=(const MyDate &from);
 
@@ -239,10 +241,24 @@ namespace cpt_project_2 {
         return self_zone < other_zone;
     }
 
-    bool MyDate::operator==(const MyDate& other_date) {
+    bool MyDate::operator==(const MyDate &other_date) {
         std::tm time_from = other_date.time_struct;
         auto self_zone = std::mktime(&this->time_struct);
-        auto other_zone = std::mktime(&time_struct);
+        auto other_zone = std::mktime(&time_from);
         return self_zone == other_zone;
+    }
+
+    int MyDate::operator-(const MyDate &other_date) {
+        std::tm time_from = other_date.time_struct;
+        auto self_zone = std::mktime(&this->time_struct);
+        auto other_zone = std::mktime(&time_from);
+
+        if (self_zone > other_zone) {
+            int sub = (int) (self_zone - other_zone);
+            return sub / (60 * 60 * 24);
+        } else {
+            int sub = (int) (other_zone - self_zone);
+            return - sub / (60 * 60 * 24);
+        }
     }
 }
