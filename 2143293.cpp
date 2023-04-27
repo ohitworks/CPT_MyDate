@@ -14,7 +14,6 @@
 
 
 int main() {
-    cpt_project_2::USE_FEBRUARY_ALWAYS_28_DAYS = true;
     auto day = cpt_project_2::MyDate(2020, "February", 28);
     std::cout << day.date << std::endl;
     auto day2 = day + 1;

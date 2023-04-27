@@ -17,14 +17,14 @@
 
 
 namespace cpt_project_2 {
-#ifdef FEBRUARY_NOT_ALWAYS_28_DAYS
-    bool USE_FEBRUARY_ALWAYS_28_DAYS = false;
-#else
-    bool USE_FEBRUARY_ALWAYS_28_DAYS = true;
-#endif
-
     class MyDate {
     public:
+
+#ifdef FEBRUARY_NOT_ALWAYS_28_DAYS
+        bool USE_FEBRUARY_ALWAYS_28_DAYS = false;
+#else
+        bool USE_FEBRUARY_ALWAYS_28_DAYS = true;
+#endif
         std::string date;
         std::string month;
         int day{};
@@ -66,7 +66,7 @@ namespace cpt_project_2 {
     // --- start Definite ---
 
     /**
-     * 从年月日生成对象
+     * create object from year, month, day
      * @param year : example: 2023
      * @param month : example: "Jun", "Apr"
      * @param day : example: 30
@@ -90,12 +90,12 @@ namespace cpt_project_2 {
     }
 
     /**
-     * 将析构函数定义为 default
+     * ~ to default
      */
     MyDate::~MyDate() = default;
 
     /**
-     * 返回 this->year 是否是平年
+     * return this->year is normal year or not
      * @return
      */
     bool MyDate::february_has_28_days() const {
@@ -103,7 +103,7 @@ namespace cpt_project_2 {
     }
 
     /**
-     * 赋值操作, 实话说没搞明白, 反正做了一个复制值
+     * Assignment operation, to be honest, I don’t understand it, anyway, I made a copy value.
      * @param from
      * @return
      */
@@ -120,8 +120,8 @@ namespace cpt_project_2 {
     }
 
     /**
-     * 增加指定天数
-     * @param days: 变化的天数
+     * Add the specified number of days
+     * @param days: date changed
      * @return
      */
     MyDate MyDate::operator+(int days) {
@@ -129,15 +129,15 @@ namespace cpt_project_2 {
         auto new_zone = self_zone + days * 24 * 60 * 60;
         auto result = MyDate(new_zone);
 
-        if (not USE_FEBRUARY_ALWAYS_28_DAYS) {
-            // 关闭了强制 2月为 28天的选项
+        if (not this->USE_FEBRUARY_ALWAYS_28_DAYS) {
+            // Disabled the option to force February to be 28 days
             return result;
         }
 
-        // 考虑 2月问题
-        if (this->year == result.year) {  // 未跨年
+        // Consider the February issue
+        if (this->year == result.year) {  // in this year
             if ((not this->february_29_passed_this_year()) and result.february_29_passed_this_year()) {
-                // 二月始终按照 28 天算
+                // February always counts as 28 days
                 MyDate::update_from_time_zone(&result, new_zone + 24 * 60 * 60);
             }
         } else {  // 跨年了
@@ -156,8 +156,8 @@ namespace cpt_project_2 {
     }
 
     /**
-     * 减去指定天数, 其实就是 *this + (-days)
-     * @param days: 变化的天数
+     * Subtract the specified number of days, in fact is *this + (-days)
+     * @param days: number of day changed
      * @return
      */
     MyDate MyDate::operator-(int days) {
@@ -165,22 +165,22 @@ namespace cpt_project_2 {
     }
 
     /**
-     * 通过时间戳生成 MyDate 对象
-     * @param time_zone: 时间戳, 不考虑闰秒
+     * Generate MyDate object from timestamp
+     * @param time_zone: Timestamp, not taking leap seconds into account
      */
     MyDate::MyDate(std::time_t time_zone) {
         MyDate::update_from_time_zone(this, time_zone);
     }
 
     /**
-     * 静态方法, 用 time_zone 更新 self, 正常计算闰年
-     * @param self
+     * Static method, update self with time_zone, calculate leap year normally
+     * @param self : the object pinter to be updated
      * @param time_zone
      */
     void MyDate::update_from_time_zone(MyDate *self, std::time_t time_zone) {
         std::stringstream ss_month, ss_date;
 
-        self->time_struct = *localtime(&time_zone);
+        localtime_s(&self->time_struct, &time_zone);
         ss_month << std::put_time(&(self->time_struct), "%y");
         ss_date << std::put_time(&(self->time_struct), "%Y-%b-%d");
 
@@ -191,7 +191,8 @@ namespace cpt_project_2 {
     }
 
     /**
-     * 后置 ++ 操作符, 调用了前置 ++. 实话说不知道这个 Warning 怎么回事.
+     * The post-position ++ operator calls the pre-position ++.
+     * To be honest, I don’t know what is going on with this Warning.
      * @return
      */
     const MyDate MyDate::operator++(int) {
@@ -204,28 +205,29 @@ namespace cpt_project_2 {
     }
 
     /**
-     * 前置 ++ 操作符
+     * pre-position ++
      * @return
      */
     MyDate &MyDate::operator++() {
         auto self_zone = std::mktime(&this->time_struct);
-        self_zone += 24 * 60 * 60;  // time_zone 增加一天时间
-        if (USE_FEBRUARY_ALWAYS_28_DAYS and
+        self_zone += 24 * 60 * 60;  // time_zone increases the time of day
+        if (this->USE_FEBRUARY_ALWAYS_28_DAYS and
             (not this->february_has_28_days()) and this->time_struct.tm_mon == 1 and this->day == 28) {
-            // 闰年 2月28日 增加 1 天是 2月29日, 应当被 "修正" 为 3月1日
+            // February 28th in leap year adds 1 day to February 29th, which should be "corrected" to March 1st.
             self_zone += 24 * 60 * 60;
         }
-        // 使用 MyDate::update_from_time_zone 更新自身
+        // update self with MyDate::update_from_time_zone
         MyDate::update_from_time_zone(this, self_zone);
         return *this;
     }
 
     /**
-     * 返回 my_date 日期是否经过了 my_date->year 的 2月29日, 若 my_date->year 是平年, 则返回 False
+     * Returns whether my_date has passed February 29 of my_date->year,
+     * or returns False if my_date->year is an ordinary year
      * @return
      */
     bool MyDate::february_29_passed_this_year() const {
-        return this->february_has_28_days() and  // 平年一定没有 2月29日
+        return this->february_has_28_days() and  // There must be no ordinary years February 29
                this->time_struct.tm_mon > 1 or this->time_struct.tm_mon == 1 and this->day > 28;
     }
 
@@ -258,7 +260,7 @@ namespace cpt_project_2 {
             return sub / (60 * 60 * 24);
         } else {
             int sub = (int) (other_zone - self_zone);
-            return - sub / (60 * 60 * 24);
+            return -sub / (60 * 60 * 24);
         }
     }
 }
